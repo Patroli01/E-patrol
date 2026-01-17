@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E-Patrol Security</title>
+    <!-- Tailwind CSS untuk Styling Cepat & Responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome untuk Ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        /* Custom Styles untuk Mobile Experience */
+        body {
+            background-color: #f3f4f6;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .camera-input {
+            display: none;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3a8a;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-6 px-4">
+
+    <!-- Header Aplikasi -->
+    <div class="w-full max-w-md bg-blue-900 text-white p-5 rounded-2xl shadow-lg mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold">E-Patrol</h1>
+            <p class="text-blue-200 text-xs">Sistem Laporan Patroli</p>
+        </div>
+        <i class="fas fa-shield-alt text-3xl text-blue-300"></i>
+    </div>
+
+    <!-- Form Container -->
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-md p-6">
+        <form id="patrolForm" onsubmit="handleFormSubmit(event)">
+            
+            <!-- Input Nama -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="nama">
+                    <i class="fas fa-user mr-2 text-blue-600"></i>Nama Petugas
+                </label>
+                <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" required>
+                    <option value="" disabled selected>Pilih Nama...</option>
+                    <option value="Danru Asep">Danru Asep</option>
+                    <option value="Anggota Budi">Anggota Budi</option>
+                    <option value="Anggota Cecep">Anggota Cecep</option>
+                    <option value="Anggota Dedi">Anggota Dedi</option>
+                </select>
+            </div>
+
+            <!-- Input Lokasi -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="lokasi">
+                    <i class="fas fa-map-marker-alt mr-2 text-red-500"></i>Lokasi / Titik
+                </label>
+                <input type="text" id="lokasi" placeholder="Contoh: Pos Gerbang Utama" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+            </div>
+
+            <!-- Input Keterangan -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="keterangan">
+                    <i class="fas fa-clipboard-list mr-2 text-green-500"></i>Keterangan Situasi
+                </label>
+                <textarea id="keterangan" rows="3" placeholder="Aman terkendali / Ditemukan pintu terbuka..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                <!-- Quick Tags -->
+                <div class="mt-2 flex gap-2 flex-wrap">
+                    <span onclick="setKeterangan('Aman Terkendali')" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded cursor-pointer border border-green-200">Aman 8-1-5</span>
+                    <span onclick="setKeterangan('Gerbang Terkunci')" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded cursor-pointer border border-blue-200">Gerbang Terkunci</span>
+                    <span onclick="setKeterangan('Lampu Mati')" class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded cursor-pointer border border-yellow-200">Lampu Mati</span>
+                </div>
+            </div>
+
+            <!-- Input Kamera -->
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2">
+                    <i class="fas fa-camera mr-2 text-purple-500"></i>Foto Dokumentasi
+                </label>
+                
+                <!-- Hidden Input -->
+                <input type="file" id="fotoInput" accept="image/*" capture="environment" class="camera-input" onchange="previewImage(this)">
+                
+                <!-- Custom Button & Preview -->
+                <div class="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-xl flex flex-col justify-center items-center bg-gray-50 cursor-pointer overflow-hidden" onclick="document.getElementById('fotoInput').click()">
+                    <div id="placeholder" class="text-center">
+                        <i class="fas fa-camera text-4xl text-gray-400 mb-2"></i>
+                        <p class="text-sm text-gray-500">Ketuk untuk ambil foto</p>
+                    </div>
+                    <img id="imagePreview" class="absolute w-full h-full object-cover hidden">
+                </div>
+                <p class="text-xs text-gray-400 mt-1 text-center">*Foto wajib diisi</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="submitBtn" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95 flex justify-center items-center gap-2">
+                <span id="btnText">Kirim Laporan</span>
+                <div id="btnLoader" class="loader hidden"></div>
+            </button>
+        </form>
+    </div>
+
+    <!-- Footer -->
+    <div class="mt-8 text-center text-gray-400 text-xs">
+        <p>&copy; 2024 Security Division</p>
+        <p class="mt-1">Powered by GitHub & Google Sheets</p>
+    </div>
+
+    <!-- Modal Sukses -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-2xl w-80 text-center shadow-2xl transform scale-100 transition-transform">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check text-2xl text-green-600"></i>
+            </div>
+            <h2 class="text-xl font-bold text-gray-800 mb-2">Laporan Terkirim!</h2>
+            <p class="text-gray-600 text-sm mb-6">Data telah tersimpan di Spreadsheet dan notifikasi WA sedang diproses.</p>
+            <button onclick="resetForm()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700">Tutup</button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // KONFIGURASI PENTING - EDIT BAGIAN INI
+        // ==========================================
+        // Ganti URL di bawah ini dengan URL Web App Google Script Anda
+        const SCRIPT_URL = "PASTE_URL_WEB_APP_GOOGLE_SCRIPT_DISINI"; 
+        // Contoh: https://script.google.com/macros/s/AKfycbx.../exec
+        // ==========================================
+
+        let base64Image = "";
+
+        // Fungsi Preview dan Kompresi Gambar
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.src = e.target.result;
+                    
+                    img.onload = function() {
+                        // Tampilkan Preview
+                        const preview = document.getElementById('imagePreview');
+                        const placeholder = document.getElementById('placeholder');
+                        preview.src = e.target.result;
+                        preview.classList.remove('hidden');
+                        placeholder.classList.add('hidden');
+
+                        // Kompresi Gambar (Resize agar tidak terlalu berat saat upload)
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxWidth = 800; // Resize max width 800px
+
+                        if (width > maxWidth) {
+                            height = height * (maxWidth / width);
+                            width = maxWidth;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convert ke Base64 (JPEG quality 0.7)
+                        base64Image = canvas.toDataURL('image/jpeg', 0.7);
+                    };
+                }
+                
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Helper untuk Quick Tags
+        function setKeterangan(text) {
+            document.getElementById('keterangan').value = text;
+        }
+
+        // Handle Submit Form
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+
+            // Validasi URL Script
+            if (SCRIPT_URL === "PASTE_URL_WEB_APP_GOOGLE_SCRIPT_DISINI" || SCRIPT_URL === "") {
+                alert("ERROR: URL Google Script belum dipasang di kode HTML!");
+                return;
+            }
+
+            // Validasi Foto
+            if (!base64Image) {
+                alert("Mohon ambil foto dokumentasi terlebih dahulu!");
+                return;
+            }
+
+            const nama = document.getElementById('nama').value;
+            const lokasi = document.getElementById('lokasi').value;
+            const keterangan = document.getElementById('keterangan').value;
+            
+            // UI Loading
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            
+            btn.disabled = true;
+            btn.classList.add('bg-gray-400');
+            btn.classList.remove('bg-blue-900');
+            btnText.textContent = "Mengirim...";
+            btnLoader.classList.remove('hidden');
+
+            // Persiapkan Data
+            const formData = {
+                nama: nama,
+                lokasi: lokasi,
+                keterangan: keterangan,
+                image: base64Image
+            };
+
+            try {
+                // Kirim ke Google Apps Script
+                // Gunakan mode no-cors untuk menghindari preflight check, tapi kita tidak bisa baca response JSON secara langsung
+                // Namun, karena kita menggunakan JSONp atau text/plain hack di GAS, kita coba post standar dulu.
+                
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(formData)
+                });
+
+                // Tampilkan Sukses (Asumsi sukses jika fetch tidak error network)
+                document.getElementById('successModal').classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Gagal mengirim laporan. Cek koneksi internet.");
+                
+                // Reset tombol
+                btn.disabled = false;
+                btn.classList.remove('bg-gray-400');
+                btn.classList.add('bg-blue-900');
+                btnText.textContent = "Kirim Laporan";
+                btnLoader.classList.add('hidden');
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('patrolForm').reset();
+            document.getElementById('imagePreview').classList.add('hidden');
+            document.getElementById('placeholder').classList.remove('hidden');
+            document.getElementById('successModal').classList.add('hidden');
+            base64Image = "";
+            
+            const btn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const btnLoader = document.getElementById('btnLoader');
+            
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-400');
+            btn.classList.add('bg-blue-900');
+            btnText.textContent = "Kirim Laporan";
+            btnLoader.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
