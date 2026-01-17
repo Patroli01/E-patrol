@@ -34,8 +34,9 @@
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2">Nama Petugas</label>
                 <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
-                    <option value="" disabled selected>Memuat daftar nama...</option>
+                    <option value="" disabled selected>Menghubungkan ke server...</option>
                 </select>
+                <p id="namaError" class="text-red-500 text-[10px] mt-1 hidden">Gagal memuat data. Cek koneksi atau Sheet2.</p>
             </div>
 
             <!-- Lokasi dengan Scan QR -->
@@ -91,15 +92,11 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc7AA93JiEBTat7pW4iIUpwBmvx-c0HidrlnsR6_IrPXwmRIzcCXAUw9-v0Cu1HV9P/exec"; 
+        // Menggunakan URL deployment terbaru yang Anda berikan
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlKHwB5j0lADBG3w2aQI4zzinxMR_jsm6eokR3QMcyNsd8bqYlnUYFEe10JPpsGhW1/exec"; 
         let imageList = [];
         let html5QrCode;
 
-        /**
-         * PETA LOKASI (Aliasing QR Code)
-         * Jika Anda ingin QR link tertentu diubah menjadi nama lokasi yang terbaca,
-         * tambahkan link tersebut di bawah ini sebagai 'key'.
-         */
         const MAP_LOKASI = {
             "https://myqrcode.mobi/cbf8cde2": "Gerbang Utama Perusahaan",
             "link_qr_pos_2_anda": "Pos Keamanan 2",
@@ -109,18 +106,33 @@
         // Load Master Data Nama on Start
         window.onload = async () => {
             const selectNama = document.getElementById('nama');
+            const errorLabel = document.getElementById('namaError');
+            
+            // Tambahkan timeout agar tidak menunggu selamanya jika Apps Script lambat
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
+
             try {
-                const response = await fetch(SCRIPT_URL);
+                const response = await fetch(SCRIPT_URL, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
                 const names = await response.json();
-                selectNama.innerHTML = '<option value="" disabled selected>Pilih Nama...</option>';
-                names.forEach(name => {
-                    const opt = document.createElement('option');
-                    opt.value = name;
-                    opt.textContent = name;
-                    selectNama.appendChild(opt);
-                });
+                
+                if (Array.isArray(names) && names.length > 0) {
+                    selectNama.innerHTML = '<option value="" disabled selected>Pilih Nama...</option>';
+                    names.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        selectNama.appendChild(opt);
+                    });
+                } else {
+                    throw new Error("Data kosong");
+                }
             } catch (e) {
+                console.error("Fetch error:", e);
                 selectNama.innerHTML = '<option value="" disabled selected>Gagal memuat nama</option>';
+                errorLabel.classList.remove('hidden');
             }
         };
 
@@ -134,17 +146,12 @@
                     { facingMode: "environment" }, 
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
-                        // Logika Penerjemah Link ke Nama Lokasi
                         let finalLocation = decodedText;
-                        
-                        // Periksa apakah link ada di daftar peta lokasi kita
                         if (MAP_LOKASI[decodedText]) {
                             finalLocation = MAP_LOKASI[decodedText];
                         } else if (decodedText.includes("myqrcode.mobi")) {
-                            // Fallback jika ada link sejenis tapi belum didaftarkan
                             finalLocation = "Titik QR Tak Dikenal (" + decodedText + ")";
                         }
-
                         document.getElementById('lokasi').value = finalLocation;
                         stopScanner();
                     },
@@ -237,7 +244,6 @@
             };
 
             try {
-                // Post data ke Apps Script
                 await fetch(SCRIPT_URL, { 
                     method: 'POST', 
                     mode: 'no-cors', 
