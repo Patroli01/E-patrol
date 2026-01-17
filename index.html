@@ -3,272 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>E-Patrol Security</title>
-    <!-- Tailwind CSS untuk Styling Cepat & Responsif -->
+    <title>E-Patrol Security Pro QR</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome untuk Ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- QR Code Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
-        /* Custom Styles untuk Mobile Experience */
-        body {
-            background-color: #f3f4f6;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-        }
-        .camera-input {
-            display: none;
-        }
-        .loader {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #1e3a8a;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        body { background-color: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #1e3a8a; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .img-container:hover .delete-btn { display: flex; }
+        #reader { border-radius: 12px; overflow: hidden; border: none !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col items-center py-6 px-4">
 
-    <!-- Header Aplikasi -->
     <div class="w-full max-w-md bg-blue-900 text-white p-5 rounded-2xl shadow-lg mb-6 flex items-center justify-between">
         <div>
-            <h1 class="text-xl font-bold">E-Patrol</h1>
-            <p class="text-blue-200 text-xs">Sistem Laporan Patroli</p>
+            <h1 class="text-xl font-bold">E-Patrol QR</h1>
+            <p class="text-blue-200 text-xs">Master Data & QR Scanner</p>
         </div>
-        <i class="fas fa-shield-alt text-3xl text-blue-300"></i>
+        <i class="fas fa-qrcode text-3xl text-blue-300"></i>
     </div>
 
-    <!-- Form Container -->
     <div class="w-full max-w-md bg-white rounded-2xl shadow-md p-6">
         <form id="patrolForm" onsubmit="handleFormSubmit(event)">
             
-            <!-- Input Nama -->
+            <!-- Nama Petugas dari Master Data -->
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="nama">
-                    <i class="fas fa-user mr-2 text-blue-600"></i>Nama Petugas
-                </label>
-                <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50" required>
-                    <option value="" disabled selected>Pilih Nama...</option>
-                    <option value="Danru Asep">Danru Asep</option>
-                    <option value="Anggota Budi">Anggota Budi</option>
-                    <option value="Anggota Cecep">Anggota Cecep</option>
-                    <option value="Anggota Dedi">Anggota Dedi</option>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Nama Petugas</label>
+                <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
+                    <option value="" disabled selected>Memuat daftar nama...</option>
                 </select>
             </div>
 
-            <!-- Input Lokasi -->
+            <!-- Lokasi dengan Scan QR -->
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="lokasi">
-                    <i class="fas fa-map-marker-alt mr-2 text-red-500"></i>Lokasi / Titik
+                <label class="block text-gray-700 text-sm font-bold mb-2 flex justify-between">
+                    <span>Lokasi / Titik</span>
+                    <button type="button" onclick="toggleScanner()" class="text-blue-600 text-xs font-bold uppercase"><i class="fas fa-expand mr-1"></i>Scan QR</button>
                 </label>
-                <input type="text" id="lokasi" placeholder="Contoh: Pos Gerbang Utama" class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
-            </div>
-
-            <!-- Input Keterangan -->
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="keterangan">
-                    <i class="fas fa-clipboard-list mr-2 text-green-500"></i>Keterangan Situasi
-                </label>
-                <textarea id="keterangan" rows="3" placeholder="Aman terkendali / Ditemukan pintu terbuka..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
-                <!-- Quick Tags -->
-                <div class="mt-2 flex gap-2 flex-wrap">
-                    <span onclick="setKeterangan('Aman Terkendali')" class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded cursor-pointer border border-green-200">Aman 8-1-5</span>
-                    <span onclick="setKeterangan('Gerbang Terkunci')" class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded cursor-pointer border border-blue-200">Gerbang Terkunci</span>
-                    <span onclick="setKeterangan('Lampu Mati')" class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded cursor-pointer border border-yellow-200">Lampu Mati</span>
+                
+                <!-- Scanner Area -->
+                <div id="scanner-container" class="hidden mb-3">
+                    <div id="reader"></div>
+                    <button type="button" onclick="toggleScanner()" class="w-full bg-red-100 text-red-600 text-xs py-2 mt-2 rounded-lg">Batal Scan</button>
                 </div>
+
+                <input type="text" id="lokasi" placeholder="Ketik atau scan QR lokasi..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
             </div>
 
-            <!-- Input Kamera -->
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2">Keterangan Situasi</label>
+                <textarea id="keterangan" rows="2" placeholder="Tulis kondisi keamanan..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required></textarea>
+            </div>
+
             <div class="mb-6">
-                <label class="block text-gray-700 text-sm font-bold mb-2">
-                    <i class="fas fa-camera mr-2 text-purple-500"></i>Foto Dokumentasi
-                </label>
-                
-                <!-- Hidden Input -->
-                <input type="file" id="fotoInput" accept="image/*" capture="environment" class="camera-input" onchange="previewImage(this)">
-                
-                <!-- Custom Button & Preview -->
-                <div class="relative w-full h-48 border-2 border-dashed border-gray-300 rounded-xl flex flex-col justify-center items-center bg-gray-50 cursor-pointer overflow-hidden" onclick="document.getElementById('fotoInput').click()">
-                    <div id="placeholder" class="text-center">
-                        <i class="fas fa-camera text-4xl text-gray-400 mb-2"></i>
-                        <p class="text-sm text-gray-500">Ketuk untuk ambil foto</p>
+                <label class="block text-gray-700 text-sm font-bold mb-2">Foto Dokumentasi</label>
+                <input type="file" id="fotoInput" accept="image/*" capture="environment" class="hidden" multiple onchange="handleFiles(this.files)">
+                <div id="photoGallery" class="grid grid-cols-3 gap-2 mb-3">
+                    <div onclick="document.getElementById('fotoInput').click()" class="aspect-square border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center bg-gray-50 active:bg-gray-100 cursor-pointer">
+                        <i class="fas fa-camera text-gray-400 text-xl"></i>
+                        <span class="text-[10px] text-gray-400 mt-1">Foto</span>
                     </div>
-                    <img id="imagePreview" class="absolute w-full h-full object-cover hidden">
                 </div>
-                <p class="text-xs text-gray-400 mt-1 text-center">*Foto wajib diisi</p>
+                <p id="photoCount" class="text-xs text-gray-500 text-center">Minimal 1 foto</p>
             </div>
 
-            <!-- Submit Button -->
-            <button type="submit" id="submitBtn" class="w-full bg-blue-900 hover:bg-blue-800 text-white font-bold py-4 rounded-xl shadow-lg transform transition active:scale-95 flex justify-center items-center gap-2">
+            <button type="submit" id="submitBtn" class="w-full bg-blue-900 text-white font-bold py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transform active:scale-95 transition">
                 <span id="btnText">Kirim Laporan</span>
                 <div id="btnLoader" class="loader hidden"></div>
             </button>
         </form>
     </div>
 
-    <!-- Footer -->
-    <div class="mt-8 text-center text-gray-400 text-xs">
-        <p>&copy; 2024 Security Division</p>
-        <p class="mt-1">Powered by GitHub & Google Sheets</p>
-    </div>
-
-    <!-- Modal Sukses -->
-    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-        <div class="bg-white p-6 rounded-2xl w-80 text-center shadow-2xl transform scale-100 transition-transform">
+    <!-- Modal Success -->
+    <div id="successModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-2xl w-full max-w-xs text-center">
             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-check text-2xl text-green-600"></i>
             </div>
-            <h2 class="text-xl font-bold text-gray-800 mb-2">Laporan Terkirim!</h2>
-            <p class="text-gray-600 text-sm mb-6">Data telah tersimpan di Spreadsheet dan notifikasi WA sedang diproses.</p>
-            <button onclick="resetForm()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700">Tutup</button>
+            <h2 class="text-xl font-bold mb-2 text-gray-800">Terkirim!</h2>
+            <p class="text-gray-500 text-sm mb-6">Laporan patroli telah berhasil disimpan.</p>
+            <button onclick="location.reload()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl">Lanjutkan</button>
         </div>
     </div>
 
     <script>
-        // ==========================================
-        // KONFIGURASI PENTING - EDIT BAGIAN INI
-        // ==========================================
-        // Ganti URL di bawah ini dengan URL Web App Google Script Anda
-        const SCRIPT_URL = "PASTE_URL_WEB_APP_GOOGLE_SCRIPT_DISINI"; 
-        // Contoh: https://script.google.com/macros/s/AKfycbx.../exec
-        // ==========================================
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQpGl6PC5JS67m3TjMOz5RFKHHpTi80a4yg6aXXu8JZp8Vmbw6qv1dSRGoQB3txKC3/exec"; 
+        let imageList = [];
+        let html5QrCode;
 
-        let base64Image = "";
+        // Load Master Data Nama on Start
+        window.onload = async () => {
+            const selectNama = document.getElementById('nama');
+            try {
+                const response = await fetch(SCRIPT_URL);
+                const names = await response.json();
+                selectNama.innerHTML = '<option value="" disabled selected>Pilih Nama...</option>';
+                names.forEach(name => {
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    selectNama.appendChild(opt);
+                });
+            } catch (e) {
+                selectNama.innerHTML = '<option value="" disabled selected>Gagal memuat nama</option>';
+            }
+        };
 
-        // Fungsi Preview dan Kompresi Gambar
-        function previewImage(input) {
-            if (input.files && input.files[0]) {
+        // QR Scanner Logic
+        function toggleScanner() {
+            const container = document.getElementById('scanner-container');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    { fps: 10, qrbox: { width: 250, height: 250 } },
+                    (decodedText) => {
+                        document.getElementById('lokasi').value = decodedText;
+                        stopScanner();
+                    },
+                    (errorMessage) => {}
+                ).catch(err => alert("Gagal akses kamera: " + err));
+            } else {
+                stopScanner();
+            }
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-container').classList.add('hidden');
+                });
+            }
+        }
+
+        // Image Logic
+        async function handleFiles(files) {
+            for (let file of files) {
+                const base64 = await convertToBase64(file);
+                imageList.push(base64);
+            }
+            renderGallery();
+        }
+
+        function convertToBase64(file) {
+            return new Promise((resolve) => {
                 const reader = new FileReader();
-                
-                reader.onload = function(e) {
+                reader.onload = (e) => {
                     const img = new Image();
                     img.src = e.target.result;
-                    
-                    img.onload = function() {
-                        // Tampilkan Preview
-                        const preview = document.getElementById('imagePreview');
-                        const placeholder = document.getElementById('placeholder');
-                        preview.src = e.target.result;
-                        preview.classList.remove('hidden');
-                        placeholder.classList.add('hidden');
-
-                        // Kompresi Gambar (Resize agar tidak terlalu berat saat upload)
+                    img.onload = () => {
                         const canvas = document.createElement('canvas');
-                        let width = img.width;
-                        let height = img.height;
-                        const maxWidth = 800; // Resize max width 800px
-
-                        if (width > maxWidth) {
-                            height = height * (maxWidth / width);
-                            width = maxWidth;
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(img, 0, 0, width, height);
-                        
-                        // Convert ke Base64 (JPEG quality 0.7)
-                        base64Image = canvas.toDataURL('image/jpeg', 0.7);
+                        let w = img.width, h = img.height;
+                        if (w > 800) { h = h * (800 / w); w = 800; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', 0.7));
                     };
-                }
-                
-                reader.readAsDataURL(input.files[0]);
-            }
+                };
+                reader.readAsDataURL(file);
+            });
         }
 
-        // Helper untuk Quick Tags
-        function setKeterangan(text) {
-            document.getElementById('keterangan').value = text;
+        function renderGallery() {
+            const gallery = document.getElementById('photoGallery');
+            const addBtn = gallery.firstElementChild;
+            gallery.innerHTML = '';
+            gallery.appendChild(addBtn);
+
+            imageList.forEach((imgData, index) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200';
+                div.innerHTML = `
+                    <img src="${imgData}" class="w-full h-full object-cover">
+                    <button type="button" onclick="removeImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl-lg">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                gallery.appendChild(div);
+            });
+            document.getElementById('photoCount').textContent = `${imageList.length} foto dipilih`;
         }
 
-        // Handle Submit Form
+        function removeImage(index) {
+            imageList.splice(index, 1);
+            renderGallery();
+        }
+
+        // Form Submit
         async function handleFormSubmit(e) {
             e.preventDefault();
+            if (imageList.length === 0) return alert("Ambil minimal 1 foto!");
 
-            // Validasi URL Script
-            if (SCRIPT_URL === "PASTE_URL_WEB_APP_GOOGLE_SCRIPT_DISINI" || SCRIPT_URL === "") {
-                alert("ERROR: URL Google Script belum dipasang di kode HTML!");
-                return;
-            }
-
-            // Validasi Foto
-            if (!base64Image) {
-                alert("Mohon ambil foto dokumentasi terlebih dahulu!");
-                return;
-            }
-
-            const nama = document.getElementById('nama').value;
-            const lokasi = document.getElementById('lokasi').value;
-            const keterangan = document.getElementById('keterangan').value;
-            
-            // UI Loading
             const btn = document.getElementById('submitBtn');
             const btnText = document.getElementById('btnText');
             const btnLoader = document.getElementById('btnLoader');
             
             btn.disabled = true;
-            btn.classList.add('bg-gray-400');
-            btn.classList.remove('bg-blue-900');
             btnText.textContent = "Mengirim...";
             btnLoader.classList.remove('hidden');
 
-            // Persiapkan Data
-            const formData = {
-                nama: nama,
-                lokasi: lokasi,
-                keterangan: keterangan,
-                image: base64Image
+            const payload = {
+                nama: document.getElementById('nama').value,
+                lokasi: document.getElementById('lokasi').value,
+                keterangan: document.getElementById('keterangan').value,
+                images: imageList
             };
 
             try {
-                // Kirim ke Google Apps Script
-                // Gunakan mode no-cors untuk menghindari preflight check, tapi kita tidak bisa baca response JSON secara langsung
-                // Namun, karena kita menggunakan JSONp atau text/plain hack di GAS, kita coba post standar dulu.
-                
-                await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(formData)
+                // Post data ke Apps Script
+                await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    mode: 'no-cors', 
+                    body: JSON.stringify(payload) 
                 });
-
-                // Tampilkan Sukses (Asumsi sukses jika fetch tidak error network)
                 document.getElementById('successModal').classList.remove('hidden');
-
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Gagal mengirim laporan. Cek koneksi internet.");
-                
-                // Reset tombol
+            } catch (err) {
+                alert("Gagal kirim. Pastikan internet stabil.");
                 btn.disabled = false;
-                btn.classList.remove('bg-gray-400');
-                btn.classList.add('bg-blue-900');
                 btnText.textContent = "Kirim Laporan";
                 btnLoader.classList.add('hidden');
             }
-        }
-
-        function resetForm() {
-            document.getElementById('patrolForm').reset();
-            document.getElementById('imagePreview').classList.add('hidden');
-            document.getElementById('placeholder').classList.remove('hidden');
-            document.getElementById('successModal').classList.add('hidden');
-            base64Image = "";
-            
-            const btn = document.getElementById('submitBtn');
-            const btnText = document.getElementById('btnText');
-            const btnLoader = document.getElementById('btnLoader');
-            
-            btn.disabled = false;
-            btn.classList.remove('bg-gray-400');
-            btn.classList.add('bg-blue-900');
-            btnText.textContent = "Kirim Laporan";
-            btnLoader.classList.add('hidden');
         }
     </script>
 </body>
