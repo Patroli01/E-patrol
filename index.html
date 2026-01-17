@@ -13,7 +13,6 @@
         body { background-color: #f3f4f6; font-family: sans-serif; -webkit-tap-highlight-color: transparent; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #1e3a8a; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .img-container:hover .delete-btn { display: flex; }
         #reader { border-radius: 12px; overflow: hidden; border: none !important; }
     </style>
 </head>
@@ -22,7 +21,7 @@
     <div class="w-full max-w-md bg-blue-900 text-white p-5 rounded-2xl shadow-lg mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-xl font-bold">E-Patrol QR</h1>
-            <p class="text-blue-200 text-xs">Master Data & QR Scanner</p>
+            <p class="text-blue-200 text-xs">Instan & Cepat</p>
         </div>
         <i class="fas fa-qrcode text-3xl text-blue-300"></i>
     </div>
@@ -30,13 +29,15 @@
     <div class="w-full max-w-md bg-white rounded-2xl shadow-md p-6">
         <form id="patrolForm" onsubmit="handleFormSubmit(event)">
             
-            <!-- Nama Petugas dari Master Data -->
+            <!-- Nama Petugas -->
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2">Nama Petugas</label>
-                <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500" required>
-                    <option value="" disabled selected>Menghubungkan ke server...</option>
+                <label class="block text-gray-700 text-sm font-bold mb-2 flex justify-between">
+                    <span>Nama Petugas</span>
+                    <span id="syncStatus" class="text-[10px] text-green-600 font-normal">Memuat...</span>
+                </label>
+                <select id="nama" class="w-full px-3 py-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
+                    <option value="" disabled selected>Pilih Nama...</option>
                 </select>
-                <p id="namaError" class="text-red-500 text-[10px] mt-1 hidden">Gagal memuat data. Cek koneksi atau Sheet2.</p>
             </div>
 
             <!-- Lokasi dengan Scan QR -->
@@ -46,13 +47,12 @@
                     <button type="button" onclick="toggleScanner()" class="text-blue-600 text-xs font-bold uppercase"><i class="fas fa-expand mr-1"></i>Scan QR</button>
                 </label>
                 
-                <!-- Scanner Area -->
                 <div id="scanner-container" class="hidden mb-3">
                     <div id="reader"></div>
                     <button type="button" onclick="toggleScanner()" class="w-full bg-red-100 text-red-600 text-xs py-2 mt-2 rounded-lg">Batal Scan</button>
                 </div>
 
-                <input type="text" id="lokasi" placeholder="Ketik atau scan QR lokasi..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
+                <input type="text" id="lokasi" placeholder="Scan QR atau ketik lokasi..." class="w-full px-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" required>
             </div>
 
             <div class="mb-4">
@@ -79,98 +79,95 @@
         </form>
     </div>
 
-    <!-- Modal Success -->
+    <!-- Success Modal -->
     <div id="successModal" class="fixed inset-0 bg-black/50 flex items-center justify-center hidden z-50 p-4">
         <div class="bg-white p-6 rounded-2xl w-full max-w-xs text-center">
             <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="fas fa-check text-2xl text-green-600"></i>
             </div>
             <h2 class="text-xl font-bold mb-2 text-gray-800">Terkirim!</h2>
-            <p class="text-gray-500 text-sm mb-6">Laporan patroli telah berhasil disimpan.</p>
+            <p class="text-gray-500 text-sm mb-6">Laporan berhasil dikirim ke grup WA.</p>
             <button onclick="location.reload()" class="w-full bg-green-600 text-white font-bold py-3 rounded-xl">Lanjutkan</button>
         </div>
     </div>
 
     <script>
-        // Menggunakan URL deployment terbaru yang Anda berikan
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxlKHwB5j0lADBG3w2aQI4zzinxMR_jsm6eokR3QMcyNsd8bqYlnUYFEe10JPpsGhW1/exec"; 
+        
+        // DAFTAR NAMA CADANGAN (Hardcode) agar aplikasi langsung siap pakai
+        const NAMA_BACKUP = ["Petugas 1", "Petugas 2", "Petugas 3", "Petugas 4"];
+        
+        const MAP_LOKASI = {
+            "https://myqrcode.mobi/cbf8cde2": "Gerbang Utama Perusahaan"
+        };
+
         let imageList = [];
         let html5QrCode;
 
-        const MAP_LOKASI = {
-            "https://myqrcode.mobi/cbf8cde2": "Gerbang Utama Perusahaan",
-            "link_qr_pos_2_anda": "Pos Keamanan 2",
-            "link_qr_gudang_anda": "Gudang Logistik"
-        };
-
-        // Load Master Data Nama on Start
-        window.onload = async () => {
+        // Fungsi Memuat Nama (Instan)
+        async function initApp() {
             const selectNama = document.getElementById('nama');
-            const errorLabel = document.getElementById('namaError');
-            
-            // Tambahkan timeout agar tidak menunggu selamanya jika Apps Script lambat
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 detik timeout
+            const syncStatus = document.getElementById('syncStatus');
 
+            // 1. Coba ambil dari LocalStorage dulu (Sangat Cepat)
+            const cachedNames = localStorage.getItem('master_petugas');
+            if (cachedNames) {
+                renderNames(JSON.parse(cachedNames));
+                syncStatus.textContent = "Data Lokal (Update...)";
+            } else {
+                // Jika kosong, gunakan backup agar petugas tidak menunggu
+                renderNames(NAMA_BACKUP);
+                syncStatus.textContent = "Data Dasar (Update...)";
+            }
+
+            // 2. Ambil dari server di latar belakang (Background Sync)
             try {
-                const response = await fetch(SCRIPT_URL, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
+                const response = await fetch(SCRIPT_URL);
                 const names = await response.json();
-                
                 if (Array.isArray(names) && names.length > 0) {
-                    selectNama.innerHTML = '<option value="" disabled selected>Pilih Nama...</option>';
-                    names.forEach(name => {
-                        const opt = document.createElement('option');
-                        opt.value = name;
-                        opt.textContent = name;
-                        selectNama.appendChild(opt);
-                    });
-                } else {
-                    throw new Error("Data kosong");
+                    localStorage.setItem('master_petugas', JSON.stringify(names));
+                    renderNames(names);
+                    syncStatus.textContent = "Sinkron";
                 }
             } catch (e) {
-                console.error("Fetch error:", e);
-                selectNama.innerHTML = '<option value="" disabled selected>Gagal memuat nama</option>';
-                errorLabel.classList.remove('hidden');
+                syncStatus.textContent = "Offline";
+                console.log("Gagal sinkron, menggunakan data terakhir.");
             }
-        };
+        }
 
-        // QR Scanner Logic
+        function renderNames(names) {
+            const selectNama = document.getElementById('nama');
+            const currentVal = selectNama.value;
+            selectNama.innerHTML = '<option value="" disabled selected>Pilih Nama...</option>';
+            names.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                selectNama.appendChild(opt);
+            });
+            if (currentVal) selectNama.value = currentVal;
+        }
+
+        window.onload = initApp;
+
+        // --- SCANNER, IMAGE, & SUBMIT LOGIC (Sama seperti sebelumnya) ---
+
         function toggleScanner() {
             const container = document.getElementById('scanner-container');
             if (container.classList.contains('hidden')) {
                 container.classList.remove('hidden');
                 html5QrCode = new Html5Qrcode("reader");
-                html5QrCode.start(
-                    { facingMode: "environment" }, 
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    (decodedText) => {
-                        let finalLocation = decodedText;
-                        if (MAP_LOKASI[decodedText]) {
-                            finalLocation = MAP_LOKASI[decodedText];
-                        } else if (decodedText.includes("myqrcode.mobi")) {
-                            finalLocation = "Titik QR Tak Dikenal (" + decodedText + ")";
-                        }
-                        document.getElementById('lokasi').value = finalLocation;
-                        stopScanner();
-                    },
-                    (errorMessage) => {}
-                ).catch(err => alert("Gagal akses kamera: " + err));
-            } else {
-                stopScanner();
-            }
+                html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 250 }, (decodedText) => {
+                    document.getElementById('lokasi').value = MAP_LOKASI[decodedText] || decodedText;
+                    stopScanner();
+                }).catch(err => console.error(err));
+            } else { stopScanner(); }
         }
 
         function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById('scanner-container').classList.add('hidden');
-                });
-            }
+            if (html5QrCode) html5QrCode.stop().then(() => document.getElementById('scanner-container').classList.add('hidden'));
         }
 
-        // Image Logic
         async function handleFiles(files) {
             for (let file of files) {
                 const base64 = await convertToBase64(file);
@@ -191,7 +188,7 @@
                         if (w > 800) { h = h * (800 / w); w = 800; }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', 0.7));
+                        resolve(canvas.toDataURL('image/jpeg', 0.6));
                     };
                 };
                 reader.readAsDataURL(file);
@@ -203,38 +200,23 @@
             const addBtn = gallery.firstElementChild;
             gallery.innerHTML = '';
             gallery.appendChild(addBtn);
-
             imageList.forEach((imgData, index) => {
                 const div = document.createElement('div');
                 div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200';
-                div.innerHTML = `
-                    <img src="${imgData}" class="w-full h-full object-cover">
-                    <button type="button" onclick="removeImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl-lg">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
+                div.innerHTML = `<img src="${imgData}" class="w-full h-full object-cover"><button type="button" onclick="removeImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-bl-lg">×</button>`;
                 gallery.appendChild(div);
             });
-            document.getElementById('photoCount').textContent = `${imageList.length} foto dipilih`;
+            document.getElementById('photoCount').textContent = `${imageList.length} foto`;
         }
 
-        function removeImage(index) {
-            imageList.splice(index, 1);
-            renderGallery();
-        }
+        function removeImage(index) { imageList.splice(index, 1); renderGallery(); }
 
-        // Form Submit
         async function handleFormSubmit(e) {
             e.preventDefault();
-            if (imageList.length === 0) return alert("Ambil minimal 1 foto!");
-
+            if (imageList.length === 0) return alert("Wajib foto!");
             const btn = document.getElementById('submitBtn');
-            const btnText = document.getElementById('btnText');
-            const btnLoader = document.getElementById('btnLoader');
-            
             btn.disabled = true;
-            btnText.textContent = "Mengirim...";
-            btnLoader.classList.remove('hidden');
+            document.getElementById('btnLoader').classList.remove('hidden');
 
             const payload = {
                 nama: document.getElementById('nama').value,
@@ -244,17 +226,12 @@
             };
 
             try {
-                await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    mode: 'no-cors', 
-                    body: JSON.stringify(payload) 
-                });
+                await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
                 document.getElementById('successModal').classList.remove('hidden');
             } catch (err) {
-                alert("Gagal kirim. Pastikan internet stabil.");
+                alert("Gagal kirim. Cek sinyal.");
                 btn.disabled = false;
-                btnText.textContent = "Kirim Laporan";
-                btnLoader.classList.add('hidden');
+                document.getElementById('btnLoader').classList.add('hidden');
             }
         }
     </script>
