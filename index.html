@@ -91,9 +91,20 @@
     </div>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxQpGl6PC5JS67m3TjMOz5RFKHHpTi80a4yg6aXXu8JZp8Vmbw6qv1dSRGoQB3txKC3/exec"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxc7AA93JiEBTat7pW4iIUpwBmvx-c0HidrlnsR6_IrPXwmRIzcCXAUw9-v0Cu1HV9P/exec"; 
         let imageList = [];
         let html5QrCode;
+
+        /**
+         * PETA LOKASI (Aliasing QR Code)
+         * Jika Anda ingin QR link tertentu diubah menjadi nama lokasi yang terbaca,
+         * tambahkan link tersebut di bawah ini sebagai 'key'.
+         */
+        const MAP_LOKASI = {
+            "https://myqrcode.mobi/cbf8cde2": "Gerbang Utama Perusahaan",
+            "link_qr_pos_2_anda": "Pos Keamanan 2",
+            "link_qr_gudang_anda": "Gudang Logistik"
+        };
 
         // Load Master Data Nama on Start
         window.onload = async () => {
@@ -123,7 +134,18 @@
                     { facingMode: "environment" }, 
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     (decodedText) => {
-                        document.getElementById('lokasi').value = decodedText;
+                        // Logika Penerjemah Link ke Nama Lokasi
+                        let finalLocation = decodedText;
+                        
+                        // Periksa apakah link ada di daftar peta lokasi kita
+                        if (MAP_LOKASI[decodedText]) {
+                            finalLocation = MAP_LOKASI[decodedText];
+                        } else if (decodedText.includes("myqrcode.mobi")) {
+                            // Fallback jika ada link sejenis tapi belum didaftarkan
+                            finalLocation = "Titik QR Tak Dikenal (" + decodedText + ")";
+                        }
+
+                        document.getElementById('lokasi').value = finalLocation;
                         stopScanner();
                     },
                     (errorMessage) => {}
